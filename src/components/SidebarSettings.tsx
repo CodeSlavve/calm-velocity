@@ -458,7 +458,7 @@ export default function SidebarSettings({
                     <Github className="w-4 h-4" />
                   </a>
                   <a
-                    href="mailto:yashv06763@gmail.com"
+                    href="mailto:yash06763@gmail.com"
                     className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition-all"
                     title="Send Email"
                     id="developer-email-link"
