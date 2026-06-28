@@ -49,3 +49,14 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface ToastNotification {
+  id: string;
+  type: "scheduled_5min" | "scheduled_now" | "timer_5min" | "timer_ended";
+  title: string;
+  message: string;
+  task?: Task;
+  step?: TaskStep;
+  createdAt: number;
+}
+

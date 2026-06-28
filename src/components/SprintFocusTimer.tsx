@@ -14,6 +14,7 @@ interface SprintFocusTimerProps {
   onStepComplete: (taskId: string, stepId: string) => void;
   onHide?: () => void;
   onStop?: () => void;
+  onTimerNotification?: (type: "5_mins_remaining" | "ended", taskTitle: string, stepTitle: string) => void;
 }
 
 export default function SprintFocusTimer({
@@ -22,6 +23,7 @@ export default function SprintFocusTimer({
   onStepComplete,
   onHide,
   onStop,
+  onTimerNotification,
 }: SprintFocusTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(25 * 60); // Default 25m
   const [duration, setDuration] = useState<number>(25 * 60);
@@ -29,6 +31,7 @@ export default function SprintFocusTimer({
   const [ambientActive, setAmbientActive] = useState<boolean>(false);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
   const [soundError, setSoundError] = useState<string | null>(null);
+  const [hasFiredFiveMinEnd, setHasFiredFiveMinEnd] = useState<boolean>(false);
 
   // Audio nodes refs for binaural alpha waves
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -46,6 +49,7 @@ export default function SprintFocusTimer({
       setTimeLeft(initialSeconds);
       setDuration(initialSeconds);
       setIsRunning(false);
+      setHasFiredFiveMinEnd(false);
     }
   }, [step]);
 
@@ -54,17 +58,26 @@ export default function SprintFocusTimer({
     let interval: NodeJS.Timeout | null = null;
     if (isRunning && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+          const next = prev - 1;
+          // Trigger 5-minute remaining timer notification
+          if (next === 300 && !hasFiredFiveMinEnd) {
+            setHasFiredFiveMinEnd(true);
+            onTimerNotification?.("5_mins_remaining", task?.title || "", step?.step || "");
+          }
+          return next;
+        });
       }, 1000);
     } else if (timeLeft === 0 && isRunning) {
       setIsRunning(false);
       triggerSuccessAlarm();
+      onTimerNotification?.("ended", task?.title || "", step?.step || "");
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, timeLeft]);
+  }, [isRunning, timeLeft, hasFiredFiveMinEnd, task, step, onTimerNotification]);
 
   // Handle ambient Binaural beats synthesis (Alpha Waves at 10Hz difference)
   useEffect(() => {
@@ -383,6 +396,7 @@ export default function SprintFocusTimer({
             onClick={() => {
               setIsRunning(false);
               setTimeLeft(duration);
+              setHasFiredFiveMinEnd(false);
             }}
             title="Reset Timer"
             className="w-11 h-11 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-705 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 cursor-pointer transition-colors"

@@ -6,7 +6,8 @@
 import { useState, useEffect } from "react";
 import { ShieldAlert, Bot, BookOpen, Sparkles, Brain, Flame, CalendarRange, Heart, Menu, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Task, TaskStep } from "./types";
+import { Task, TaskStep, ToastNotification } from "./types";
+import { ToastContainer, playNotificationSound } from "./components/NotificationToast";
 import { SAMPLE_TASKS } from "./data/sampleTasks";
 import RescueDashboard from "./components/RescueDashboard";
 import TaskRescuePane from "./components/TaskRescuePane";
@@ -28,6 +29,152 @@ export default function App() {
   const [activeFocusTask, setActiveFocusTask] = useState<Task | null>(null);
   const [activeFocusStep, setActiveFocusStep] = useState<TaskStep | null>(null);
   const [isFocusWidgetHidden, setIsFocusWidgetHidden] = useState(false);
+
+  // Notification States
+  const [notifications, setNotifications] = useState<ToastNotification[]>([]);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      return Notification.permission;
+    }
+    return "default" as NotificationPermission;
+  });
+
+  const [triggeredNotifications, setTriggeredNotifications] = useState<string[]>(() => {
+    const saved = localStorage.getItem("calm_velocity_triggered_notifications");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Helper to construct today's date YYYY-MM-DD
+  const getTodayDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Prune expired notifications (not matching today's date) on load
+  useEffect(() => {
+    const todayStr = getTodayDateStr();
+    setTriggeredNotifications((prev) => {
+      const next = prev.filter((key) => key.endsWith(todayStr));
+      localStorage.setItem("calm_velocity_triggered_notifications", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const saveTriggeredNotification = (key: string) => {
+    setTriggeredNotifications((prev) => {
+      if (prev.includes(key)) return prev;
+      const next = [...prev, key];
+      localStorage.setItem("calm_velocity_triggered_notifications", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleRequestPermission = async () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      const status = await Notification.requestPermission();
+      setPermissionStatus(status);
+    }
+  };
+
+  const triggerNotification = (
+    type: "scheduled_5min" | "scheduled_now" | "timer_5min" | "timer_ended",
+    title: string,
+    message: string,
+    task?: Task,
+    step?: TaskStep
+  ) => {
+    const id = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newNotif: ToastNotification = { id, type, title, message, task, step, createdAt: Date.now() };
+
+    // Play appropriate locally synthesized chime
+    if (type === "timer_ended") {
+      playNotificationSound("success");
+    } else if (type === "timer_5min") {
+      playNotificationSound("reminder");
+    } else {
+      playNotificationSound("reminder");
+    }
+
+    // Attempt native browser desktop notification if permission is active
+    if (permissionStatus === "granted" && "Notification" in window) {
+      try {
+        new Notification("Calm Velocity Reminder", {
+          body: `${title}\n${message}`,
+          icon: "/favicon.ico",
+        });
+      } catch (err) {
+        console.warn("Desktop Notification trigger failed:", err);
+      }
+    }
+
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
+  const handleDismissNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  // Background check for upcoming scheduled timebox steps (runs every 5s)
+  useEffect(() => {
+    const checkScheduledSteps = () => {
+      const todayStr = getTodayDateStr();
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+      tasks.forEach((task) => {
+        if (task.completed) return;
+        task.breakdown.forEach((step) => {
+          if (step.completed || !step.scheduleBlock) return;
+          const { timeSlot, date } = step.scheduleBlock;
+          if (date !== todayStr) return;
+
+          // Parse target slot block minutes
+          const [slotHoursStr, slotMinutesStr] = timeSlot.split(":");
+          const slotHours = parseInt(slotHoursStr, 10);
+          const slotMinutes = parseInt(slotMinutesStr, 10);
+          const slotTotalMinutes = slotHours * 60 + slotMinutes;
+
+          const diffMinutes = slotTotalMinutes - currentTotalMinutes;
+
+          const key5Min = `${step.id}-5min-start-${todayStr}`;
+          const keyArrived = `${step.id}-arrived-${todayStr}`;
+
+          // Case 1: 5 minutes remaining for scheduled task step
+          if (diffMinutes === 5 && !triggeredNotifications.includes(key5Min)) {
+            saveTriggeredNotification(key5Min);
+            triggerNotification(
+              "scheduled_5min",
+              "Step starts in 5 minutes!",
+              `"${step.step}" is scheduled at ${timeSlot}. Ready your workspace!`,
+              task,
+              step
+            );
+          }
+
+          // Case 2: Scheduled step time arrived
+          if (diffMinutes === 0 && !triggeredNotifications.includes(keyArrived)) {
+            saveTriggeredNotification(keyArrived);
+            triggerNotification(
+              "scheduled_now",
+              "Schedule Time Arrived!",
+              `"${step.step}" is starting now. Let's make this small commitment!`,
+              task,
+              step
+            );
+          }
+        });
+      });
+    };
+
+    checkScheduledSteps();
+    const timer = setInterval(checkScheduledSteps, 5000);
+    return () => clearInterval(timer);
+  }, [tasks, triggeredNotifications, permissionStatus]);
 
   // Active view tab: "actions" or "cognitive"
   const [activeControlTab, setActiveControlTab] = useState<"plans" | "drills">("plans");
@@ -498,6 +645,28 @@ export default function App() {
                         setActiveFocusStep(null);
                         setActiveFocusTask(null);
                       }}
+                      onTimerNotification={(type, taskTitle, stepTitle) => {
+                        const activeTaskObj = tasks.find((t) => t.id === activeFocusTask?.id);
+                        const activeStepObj = activeTaskObj?.breakdown.find((s) => s.id === activeFocusStep?.id);
+
+                        if (type === "5_mins_remaining") {
+                          triggerNotification(
+                            "timer_5min",
+                            "Focus session ends in 5 mins!",
+                            `Almost there! "${stepTitle}" is entering its final stretch. Keep the focus high.`,
+                            activeTaskObj || undefined,
+                            activeStepObj || undefined
+                          );
+                        } else if (type === "ended") {
+                          triggerNotification(
+                            "timer_ended",
+                            "Focus Session Ended!",
+                            `Excellent job! The sprint timer for "${stepTitle}" has finished.`,
+                            activeTaskObj || undefined,
+                            activeStepObj || undefined
+                          );
+                        }
+                      }}
                     />
                   </div>
                 </motion.div>
@@ -541,6 +710,14 @@ export default function App() {
           }
         }}
         onRestorePreseeds={restoreSamplePreseeds}
+      />
+
+      <ToastContainer
+        notifications={notifications}
+        onDismiss={handleDismissNotification}
+        onStartFocus={handleInitiateFocus}
+        permissionStatus={permissionStatus}
+        onRequestPermission={handleRequestPermission}
       />
     </div>
   );
