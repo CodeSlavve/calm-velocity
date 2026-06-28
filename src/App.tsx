@@ -21,20 +21,6 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  // Gemini API Key state
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
-    return localStorage.getItem("gemini_api_key") || "";
-  });
-
-  const handleUpdateApiKey = (key: string) => {
-    setGeminiApiKey(key);
-    if (key) {
-      localStorage.setItem("gemini_api_key", key);
-    } else {
-      localStorage.removeItem("gemini_api_key");
-    }
-  };
-
   // Sidebar open state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -419,8 +405,6 @@ export default function App() {
                     onAddTask={handleAddTask}
                     onPreseedRestore={restoreSamplePreseeds}
                     onDeleteTask={handleDeleteTask}
-                    geminiApiKey={geminiApiKey}
-                    onOpenSidebar={() => setIsSidebarOpen(true)}
                   />
 
                   {/* Commitment Timeboxing hour-by-hour calendar schedule */}
@@ -535,8 +519,6 @@ export default function App() {
             <div className="relative">
               <SmartCoachChat 
                 currentTask={selectedTask}
-                geminiApiKey={geminiApiKey}
-                onOpenSidebar={() => setIsSidebarOpen(true)}
               />
             </div>
 
@@ -559,8 +541,6 @@ export default function App() {
           }
         }}
         onRestorePreseeds={restoreSamplePreseeds}
-        geminiApiKey={geminiApiKey}
-        onUpdateApiKey={handleUpdateApiKey}
       />
     </div>
   );

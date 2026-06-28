@@ -10,14 +10,10 @@ import { ChatMessage, Task } from "../types";
 
 interface SmartCoachChatProps {
   currentTask: Task | null;
-  geminiApiKey?: string;
-  onOpenSidebar?: () => void;
 }
 
 export default function SmartCoachChat({ 
   currentTask,
-  geminiApiKey = "",
-  onOpenSidebar = () => {},
 }: SmartCoachChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -88,8 +84,7 @@ export default function SmartCoachChat({
         const response = await fetch("/api/speak-coach", {
           method: "POST",
           headers: { 
-            "Content-Type": "application/json",
-            "X-Gemini-API-Key": geminiApiKey
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({ text: textString, voice: "Zephyr" }),
         });
@@ -188,8 +183,7 @@ export default function SmartCoachChat({
       const response = await fetch("/api/chat-coach", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          "X-Gemini-API-Key": geminiApiKey
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
@@ -357,64 +351,45 @@ export default function SmartCoachChat({
       </div>
 
       {/* Input container */}
-      {!geminiApiKey ? (
-        <div className="mt-2.5 bg-slate-50 dark:bg-slate-950 border border-amber-200/50 dark:border-amber-900/30 p-3 rounded-2xl flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Key className="w-4 h-4 text-amber-500 shrink-0" />
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-tight">
-              API Key Setup Required to talk with AI Coach
-            </span>
+      <form onSubmit={handleSendMessage} className="mt-2.5 flex flex-col gap-1.5">
+        {!isOnline && (
+          <div className="text-[10px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-400 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0" />
+            <span>AI Coach is offline. Please reconnect to use AI features.</span>
           </div>
+        )}
+        <div className="flex items-center gap-2 w-full">
+          <input
+            type="text"
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            disabled={!isOnline}
+            placeholder={
+              !isOnline 
+                ? "AI Coach is currently offline..."
+                : currentTask
+                  ? `Ask how to approach: "${currentTask.title.slice(0, 18)}..."`
+                  : "Tell the coach what's making you avoid starting..."
+            }
+            className={`flex-1 text-slate-700 dark:text-slate-200 p-3 rounded-2xl text-xs border border-slate-200 dark:border-slate-800 transition-all font-medium focus:outline-none ${
+              !isOnline 
+                ? "bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 cursor-not-allowed border-slate-150 dark:border-slate-900" 
+                : "bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50"
+            }`}
+          />
           <button
-            type="button"
-            onClick={onOpenSidebar}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] rounded-xl cursor-pointer border-none"
-            id="chat-setup-key-btn"
+            type="submit"
+            disabled={!isOnline}
+            className={`p-3 rounded-2xl flex items-center justify-center transition-all shrink-0 border-none ${
+              !isOnline
+                ? "bg-slate-200 dark:bg-slate-850 text-slate-450 dark:text-slate-550 cursor-not-allowed shadow-none"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md dark:shadow-none shadow-indigo-100 cursor-pointer"
+            }`}
           >
-            Setup Key
+            <Send className="w-4.5 h-4.5" />
           </button>
         </div>
-      ) : (
-        <form onSubmit={handleSendMessage} className="mt-2.5 flex flex-col gap-1.5">
-          {!isOnline && (
-            <div className="text-[10px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-400 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-amber-500 rounded-full shrink-0" />
-              <span>AI Coach is offline. Please reconnect to use AI features.</span>
-            </div>
-          )}
-          <div className="flex items-center gap-2 w-full">
-            <input
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              disabled={!isOnline}
-              placeholder={
-                !isOnline 
-                  ? "AI Coach is currently offline..."
-                  : currentTask
-                    ? `Ask how to approach: "${currentTask.title.slice(0, 18)}..."`
-                    : "Tell the coach what's making you avoid starting..."
-              }
-              className={`flex-1 text-slate-700 dark:text-slate-200 p-3 rounded-2xl text-xs border border-slate-200 dark:border-slate-800 transition-all font-medium focus:outline-none ${
-                !isOnline 
-                  ? "bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 cursor-not-allowed border-slate-150 dark:border-slate-900" 
-                  : "bg-slate-50 dark:bg-slate-950 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50"
-              }`}
-            />
-            <button
-              type="submit"
-              disabled={!isOnline}
-              className={`p-3 rounded-2xl flex items-center justify-center transition-all shrink-0 border-none ${
-                !isOnline
-                  ? "bg-slate-200 dark:bg-slate-850 text-slate-450 dark:text-slate-550 cursor-not-allowed shadow-none"
-                  : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md dark:shadow-none shadow-indigo-100 cursor-pointer"
-              }`}
-            >
-              <Send className="w-4.5 h-4.5" />
-            </button>
-          </div>
-        </form>
-      )}
+      </form>
     </div>
   );
 }

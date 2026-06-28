@@ -21,10 +21,10 @@ const PORT = 3000;
 app.use(express.json());
 
 // Lazy-initialize Gemini client
-function getGeminiClient(customApiKey?: string): GoogleGenAI {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+function getGeminiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
-    throw new Error("GEMINI_API_KEY environment variable is required but missing. Please configure it in the Setup panel.");
+    throw new Error("GEMINI_API_KEY environment variable is required but missing. Please configure it in Settings > Secrets.");
   }
   return new GoogleGenAI({
     apiKey: apiKey,
@@ -39,12 +39,6 @@ function getGeminiClient(customApiKey?: string): GoogleGenAI {
 // 1. API: Analyze Task & Prioritize
 app.post("/api/analyze-task", async (req, res) => {
   const { title, description, deadline, focusPreference } = req.body;
-  const customKey = req.headers["x-gemini-api-key"] as string | undefined;
-
-  if (!customKey) {
-    res.status(401).json({ error: "Gemini API Key is required. Please set up your own Gemini API Key in the Sidebar Panel to use AI features." });
-    return;
-  }
 
   if (!title) {
     res.status(400).json({ error: "Task title is required" });
@@ -52,7 +46,7 @@ app.post("/api/analyze-task", async (req, res) => {
   }
 
   try {
-    const ai = getGeminiClient(customKey);
+    const ai = getGeminiClient();
     const prompt = `
       Task Title: "${title}"
       Task Description: "${description || "None provided"}"
@@ -197,12 +191,6 @@ Breakdowns MUST feel immediately doable (typically 10-45 minutes per step).`,
 // 2. API: Assistant Coach Chat & Context
 app.post("/api/chat-coach", async (req, res) => {
   const { messages, userTaskContext } = req.body;
-  const customKey = req.headers["x-gemini-api-key"] as string | undefined;
-
-  if (!customKey) {
-    res.status(401).json({ error: "Gemini API Key is required. Please set up your own Gemini API Key in the Sidebar Panel." });
-    return;
-  }
 
   if (!messages || !Array.isArray(messages)) {
     res.status(400).json({ error: "Messages array is required" });
@@ -210,7 +198,7 @@ app.post("/api/chat-coach", async (req, res) => {
   }
 
   try {
-    const ai = getGeminiClient(customKey);
+    const ai = getGeminiClient();
     const chatHistory = messages.map((m: any) => ({
       role: m.sender === "user" ? "user" : "model",
       parts: [{ text: m.text }],
@@ -255,12 +243,6 @@ ${contextHeader}`;
 // 3. API: Speak Procrastination Buster (Text To Speech)
 app.post("/api/speak-coach", async (req, res) => {
   const { text, voice } = req.body;
-  const customKey = req.headers["x-gemini-api-key"] as string | undefined;
-
-  if (!customKey) {
-    res.status(401).json({ error: "Gemini API Key is required." });
-    return;
-  }
 
   if (!text) {
     res.status(400).json({ error: "Text is required to speak" });
@@ -268,7 +250,7 @@ app.post("/api/speak-coach", async (req, res) => {
   }
 
   try {
-    const ai = getGeminiClient(customKey);
+    const ai = getGeminiClient();
     const cleanText = text.replace(/[*#_`]/g, ""); // strip markdown formatting for spoken text
 
     const response = await ai.models.generateContent({

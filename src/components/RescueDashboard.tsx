@@ -15,8 +15,6 @@ interface RescueDashboardProps {
   onAddTask: (task: Task) => void;
   onPreseedRestore: () => void;
   onDeleteTask: (taskId: string) => void;
-  geminiApiKey?: string;
-  onOpenSidebar?: () => void;
 }
 
 const MOTIVATIONAL_PHRASES = [
@@ -34,8 +32,6 @@ export default function RescueDashboard({
   onAddTask,
   onPreseedRestore,
   onDeleteTask,
-  geminiApiKey = "",
-  onOpenSidebar = () => {},
 }: RescueDashboardProps) {
   // AI Smasher state
   const [taskTitle, setTaskTitle] = useState("");
@@ -74,8 +70,7 @@ export default function RescueDashboard({
       const response = await fetch("/api/analyze-task", {
         method: "POST",
         headers: { 
-          "Content-Type": "application/json",
-          "X-Gemini-API-Key": geminiApiKey
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           title: taskTitle,
@@ -182,116 +177,93 @@ export default function RescueDashboard({
           </div>
         </div>
 
-        {!geminiApiKey ? (
-          <div className="bg-slate-50 dark:bg-slate-950/40 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl p-6 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200/50">
-              <Key className="w-5 h-5" />
+        <form onSubmit={handleAISmashSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {/* Title input */}
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">
+                What are you postponing or avoiding? *
+              </label>
+              <input
+                id="task-title-input"
+                type="text"
+                required
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="e.g. Pitch deck, tax returns, presentation"
+                className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 placeholder-slate-400 dark:placeholder-slate-600 focus:bg-white dark:focus:bg-slate-900 transition-all"
+              />
             </div>
-            <div className="max-w-md mx-auto space-y-1.5">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Gemini API Key Required</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                To protect your privacy and API limits, this application operates using your own API key. Set up your Gemini API Key in the settings panel to activate the AI Plan Smasher!
-              </p>
+
+            {/* Deadline selection */}
+            <div>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
+                When is it Critical due?
+              </label>
+              <input
+                type="datetime-local"
+                value={taskDeadline}
+                onChange={(e) => setTaskDeadline(e.target.value)}
+                className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono"
+              />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 align-top">
+            {/* Description textarea */}
+            <div className="md:col-span-2">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
+                Provide brief context or instructions (Optional)
+              </label>
+              <textarea
+                value={taskDesc}
+                onChange={(e) => setTaskDesc(e.target.value)}
+                rows={2}
+                placeholder="e.g. Needs a 5-minute slide deck with a system map."
+                className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 placeholder-slate-400 dark:placeholder-slate-600 focus:bg-white dark:focus:bg-slate-900 transition-all resize-none"
+              />
+            </div>
+
+            {/* Focus Style */}
+            <div>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
+                How should AI build the checklist?
+              </label>
+              <select
+                value={focusStyle}
+                onChange={(e) => setFocusStyle(e.target.value as any)}
+                className="w-full text-xs font-bold text-slate-600 dark:text-slate-300 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 transition-all cursor-pointer focus:bg-white dark:focus:bg-slate-900"
+              >
+                <option value="balanced" className="dark:bg-slate-900">Standard Balanced (3-5 core steps)</option>
+                <option value="baby-steps" className="dark:bg-slate-900">Micro Baby Steps (Low mental threshold)</option>
+                <option value="panic-sprints" className="dark:bg-slate-900">Panic Sprints (Short high-intensity blocks)</option>
+                <option value="structured-blocks" className="dark:bg-slate-900">Time-Efficient Blocks (For tight schedules)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Submit action panel */}
+          <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-850">
             <button
-              type="button"
-              onClick={onOpenSidebar}
-              className="py-2.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto border-none"
-              id="dashboard-setup-key-btn"
+              type="submit"
+              disabled={isLoading}
+              className="py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-md shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 border-none"
             >
-              <Key className="w-3.5 h-3.5" />
-              <span>Set Up API Key Now</span>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4.5 h-4.5 animate-spin" />
+                  <span className="text-xs">{loaderText}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-xs">Decompose & Prioritize Task</span>
+                </>
+              )}
             </button>
           </div>
-        ) : (
-          <form onSubmit={handleAISmashSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Title input */}
-              <div className="md:col-span-2">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1.5">
-                  What are you postponing or avoiding? *
-                </label>
-                <input
-                  id="task-title-input"
-                  type="text"
-                  required
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="e.g. Pitch deck, tax returns, presentation"
-                  className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 placeholder-slate-400 dark:placeholder-slate-600 focus:bg-white dark:focus:bg-slate-900 transition-all"
-                />
-              </div>
-
-              {/* Deadline selection */}
-              <div>
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  When is it Critical due?
-                </label>
-                <input
-                  type="datetime-local"
-                  value={taskDeadline}
-                  onChange={(e) => setTaskDeadline(e.target.value)}
-                  className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 focus:bg-white dark:focus:bg-slate-900 transition-all font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 align-top">
-              {/* Description textarea */}
-              <div className="md:col-span-2">
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  Provide brief context or instructions (Optional)
-                </label>
-                <textarea
-                  value={taskDesc}
-                  onChange={(e) => setTaskDesc(e.target.value)}
-                  rows={2}
-                  placeholder="e.g. Needs a 5-minute slide deck with a system map."
-                  className="w-full text-xs font-semibold text-slate-700 dark:text-slate-200 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 placeholder-slate-400 dark:placeholder-slate-600 focus:bg-white dark:focus:bg-slate-900 transition-all resize-none"
-                />
-              </div>
-
-              {/* Focus Style */}
-              <div>
-                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  How should AI build the checklist?
-                </label>
-                <select
-                  value={focusStyle}
-                  onChange={(e) => setFocusStyle(e.target.value as any)}
-                  className="w-full text-xs font-bold text-slate-600 dark:text-slate-300 p-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/50 transition-all cursor-pointer focus:bg-white dark:focus:bg-slate-900"
-                >
-                  <option value="balanced" className="dark:bg-slate-900">Standard Balanced (3-5 core steps)</option>
-                  <option value="baby-steps" className="dark:bg-slate-900">Micro Baby Steps (Low mental threshold)</option>
-                  <option value="panic-sprints" className="dark:bg-slate-900">Panic Sprints (Short high-intensity blocks)</option>
-                  <option value="structured-blocks" className="dark:bg-slate-900">Time-Efficient Blocks (For tight schedules)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Submit action panel */}
-            <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-850">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-md shadow-indigo-100 dark:shadow-none flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 border-none"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                    <span className="text-xs">{loaderText}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    <span className="text-xs">Decompose & Prioritize Task</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        )}
+        </form>
       </div>
 
       {/* 3. Task List Kanban Grid Panel */}
